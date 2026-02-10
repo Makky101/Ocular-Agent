@@ -1,5 +1,7 @@
 import pyautogui as auto
 from reasoning import reason
+from screenCapture import screenCapture
+import time
 
 def main():
   auto.FAILSAFE = True

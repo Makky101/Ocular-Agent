@@ -2,12 +2,13 @@ import mss
 import numpy as np
 from PIL import Image
 from io import BytesIO
+import pyautogui as auto
 
 
 def screenCapture():
     with mss.mss() as sct:
         monitor = sct.monitors[1]         
-        screenshot = sct.grab(monitor)    
+        screenshot = sct.grab(monitor) 
         arr = np.array(screenshot)[:,:,:3]  
         img = Image.fromarray(arr)
         
