@@ -2,8 +2,6 @@ import mss
 import numpy as np
 from PIL import Image
 from io import BytesIO
-import pyautogui as auto
-
 
 def screenCapture():
     with mss.mss() as sct:
