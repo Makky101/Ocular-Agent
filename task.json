@@ -1,0 +1,49 @@
+```json
+[
+  {
+    "id": 1,
+    "step": "Click the Start menu button",
+    "action": [
+      {
+        "keyword": "moveto",
+        "co-ord": {"x": 20, "y": 1060}
+      },
+      {
+        "keyword": "click"
+      },
+      {
+        "keyword": "wait",
+        "duration": 1
+      }
+    ]
+  },
+  {
+    "id": 2,
+    "step": "Type 'claude' in the Start menu search",
+    "action": [
+      {
+        "keyword": "type",
+        "text": "claude"
+      },
+      {
+        "keyword": "wait",
+        "duration": 1
+      }
+    ]
+  },
+  {
+    "id": 3,
+    "step": "Press Enter to open Claude",
+    "action": [
+      {
+        "keyword": "press",
+        "key": "enter"
+      },
+      {
+        "keyword": "wait",
+        "duration": 3
+      }
+    ]
+  }
+]
+```

@@ -1,36 +1,41 @@
 # Human Emulator
 
-An AI-assisted desktop automation prototype that captures your screen, asks Gemini to reason about the current UI, then generates a structured action plan for task execution.
+`Human Emulator` is a desktop automation prototype that turns a natural-language task into executable UI actions.
 
-## What this project does
+It works by:
 
-`Human Emulator` is designed to:
+1. Capturing your current screen
+2. Sending screenshot + task to an LLM
+3. Receiving a JSON action plan
+4. Executing that plan with `pyautogui`
 
-- Take a full-screen screenshot of your current desktop state
-- Send the screenshot + user task to a Gemini model
-- Receive a JSON step-by-step action plan (move, click, type, press, wait, drag)
-- Run through the plan using a local automation loop
+---
 
-> **Current status:** the low-level `pyautogui` calls in `main.py` are mostly commented out and replaced with print statements for safe debugging.
+## Current status
+
+- Core loop is functional (`main.py` -> `reasoning.py` -> `automate()`)
+- Real mouse/keyboard actions are enabled in `main.py`
+- Action plans are generated via Hugging Face Inference API (`InferenceClient`)
+- `memory.py` currently stores/retrieves raw AI output in `task.json`
 
 ---
 
 ## Project structure
 
 - `main.py`  
-  Entry point. Collects task input, calls reasoning, and runs automation actions.
+  Entry point. Reads user task, gets reasoning output, executes UI actions.
 
 - `reasoning.py`  
-  Builds the LLM prompt, sends screenshot + instructions to Gemini, and parses model output into JSON.
+  Builds prompt, sends screenshot + task to model, cleans/parses JSON response.
 
 - `screenCapture.py`  
-  Captures monitor screenshot using `mss` and returns PNG bytes.
+  Captures monitor screenshot using `mss`.
 
 - `memory.py`  
-  Placeholder for future caching/memory logic.
+  Simple file-based cache helper for task output (`task.json`).
 
 - `test.py`  
-  Quick local test harness that launches `main.py` and feeds a random command.
+  Launches `main.py` with a randomized command for quick smoke testing.
 
 - `requirements.txt`  
   Python dependencies.
@@ -40,8 +45,8 @@ An AI-assisted desktop automation prototype that captures your screen, asks Gemi
 ## Requirements
 
 - Python 3.10+
-- Windows desktop environment (current implementation tested with Windows-style usage)
-- Gemini API key
+- Windows desktop environment
+- Hugging Face API token (used as `API_KEY`)
 
 ---
 
@@ -67,51 +72,35 @@ python -m venv .venv
 pip install -r requirements.txt
 ```
 
-4. Add environment variables
+4. Add environment variable
 
 Create a `.env` file in the project root:
 
 ```env
-API_KEY=your_google_gemini_api_key_here
+API_KEY=your_huggingface_token_here
 ```
 
 ---
 
 ## Usage
 
-Run the app:
+Run:
 
 ```bash
 python main.py
 ```
 
-Then type a task when prompted, for example:
+Then provide a task, for example:
 
-- `open chrome and search for weather`
+- `open chrome`
 - `open vscode`
 - `open calculator`
 
-The app will:
-
-1. Capture the screen
-2. Generate a JSON automation plan with Gemini
-3. Execute (currently print/debug) each action step
-
 ---
 
-## How it works (flow)
+## Action schema expected from model
 
-1. **Input**: User provides a natural language task in `main.py`
-2. **Perception**: `screenCapture.py` captures the current screen
-3. **Reasoning**: `reasoning.py` sends screenshot + strict prompt to Gemini
-4. **Parsing**: AI response is cleaned and parsed into JSON actions
-5. **Execution**: `automate()` loops through steps/actions and performs (or logs) commands
-
----
-
-## JSON action schema (expected)
-
-Each step follows this shape:
+The executor expects a JSON array like:
 
 ```json
 [
@@ -126,7 +115,7 @@ Each step follows this shape:
 ]
 ```
 
-Supported keywords in executor logic:
+Supported `keyword` values:
 
 - `moveto`
 - `click`
@@ -141,35 +130,34 @@ Supported keywords in executor logic:
 
 ## Notes / limitations
 
-- `main.py` currently logs many actions instead of executing them (safe development mode).
-- `clean_data()` in `reasoning.py` may need hardening for malformed model outputs.
-- `memory.py` is not implemented yet.
-- Automation safety features are configured (`pyautogui.FAILSAFE = True`) but should be tested carefully before enabling full control.
+- Automation runs on your active desktop session; unexpected cursor/keyboard movement can interrupt tasks.
+- `clean_data()` in `reasoning.py` is basic and may fail on malformed model responses.
+- `reasoning.py` still imports `google.genai`, but current execution path uses `huggingface_hub.InferenceClient`.
+- `memory.py` is minimal and not yet a true long-term memory system.
 
 ---
 
 ## Quick test
 
-Run:
-
 ```bash
 python test.py
 ```
 
-This starts `main.py` and sends a random command from a predefined list.
+This runs `main.py` with one random command from a predefined list.
 
 ---
 
-## Roadmap ideas
+## Roadmap
 
-- Re-enable and validate real `pyautogui` calls in `main.py`
-- Add robust output validation for AI-generated plans
-- Add retries/fallbacks for uncertain UI detections
-- Implement persistent memory/caching in `memory.py`
-- Add structured logging and unit tests
+- Add strict response schema validation before automation
+- Add retry and fallback behavior when plan generation is invalid
+- Improve coordinate robustness (multi-monitor, scaling, app states)
+- Add unit/integration tests for parser + executor
+- Expand memory layer beyond basic file caching
 
 ---
 
 ## License
 
-No license file is currently included. Add a `LICENSE` file if you plan to distribute this project publicly.
+No license file is currently included.
+Add a `LICENSE` file before public distribution.

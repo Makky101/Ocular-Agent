@@ -1,7 +1,8 @@
 from screenCapture import screenCapture
 from google import genai
 from dotenv import load_dotenv
-from google.genai import types
+from huggingface_hub import InferenceClient
+from memory import caching
 import os
 import json
 import re
@@ -163,6 +164,7 @@ def clean_data(ai_output):
   json_text = re.sub(r',\s*([}\]])', r'\1', json_text)
 
   try:
+    print(json_text)
     return json.loads(json_text)
   except json.JSONDecodeError as e:
     raise ValueError(f"Invalid JSON from AI: {e}") 
@@ -170,19 +172,25 @@ def clean_data(ai_output):
 # llm generates a checklist and follows it
 def reason(task,OS):
     try:
-      client = genai.Client(api_key=os.environ.get("API_KEY"))
-      response = client.models.generate_content(
-        model="gemini-3-flash-preview",
-        contents=[
-          types.Part.from_bytes(
-            data=screenCapture(),
-            mime_type='image/png'
-          ),
-          prompt(task,OS)
-        ]
+      client = InferenceClient(token=os.environ.get("API_KEY"))
+      response = client.chat_completion(
+        model= 'moonshotai/Kimi-K2.5:novita',
+        messages=[{
+          'role':'user',
+          'content':[
+            {'type':'text', 'text': prompt(task,OS)},
+
+            {'type': 'image', 
+             'image': {'url': f'data:image/png;base64,{screenCapture()}'}
+            }
+          ]
+        }],
+        max_tokens=2000
       )
-      print(response.text)
-      return clean_data(response.text)
+      data = response.choices[0].message.content
+      print(data)
+      caching(data,'write')
+      return clean_data(data)
     except Exception as e:
       print('error at reason --> ',e)
     
