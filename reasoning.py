@@ -158,10 +158,11 @@ def clean_data(ai_output):
     json_text = match.group(1)
   else:
     match = re.search(r'\[[\s\S]*\]',ai_output)
-    json_text = match.group(0) if match else ai_output
+    json_text = match.group() if match else ai_output
 
   json_text = json_text.strip()
   json_text = re.sub(r',\s*([}\]])', r'\1', json_text)
+  json_text = re.sub(r'^json```|```$','',json_text)
 
   try:
     print(json_text)
