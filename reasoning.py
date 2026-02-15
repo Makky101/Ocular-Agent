@@ -1,8 +1,7 @@
 from screenCapture import screenCapture
-from google import genai
 from dotenv import load_dotenv
 from huggingface_hub import InferenceClient
-from memory import caching
+from memory import cached
 import os
 import json
 import re
@@ -10,8 +9,7 @@ import re
 load_dotenv()
 
 #prompt
-def prompt(task,OS):
-
+def prompt(task,OS):# switch conditions for when called for the initial execution of task or for error checking
     msg = f"""You are a **Technical Operator AI** that automates computer tasks by analyzing screenshots and generating precise action sequences.
 
     **CURRENT TASK:** {task}
@@ -172,27 +170,28 @@ def clean_data(ai_output):
 
 # llm generates a checklist and follows it
 def reason(task,OS):
-    try:
-      client = InferenceClient(token=os.environ.get("API_KEY"))
-      response = client.chat_completion(
-        model= 'moonshotai/Kimi-K2.5:novita',
-        messages=[{
-          'role':'user',
-          'content':[
-            {'type':'text', 'text': prompt(task,OS)},
+  try:
+    client = InferenceClient(token=os.environ.get("API_KEY"))
+    response = client.chat_completion(
+      model= 'moonshotai/Kimi-K2.5:novita',
+      messages=[{
+        'role':'user',
+        'content':[
+          {'type':'text', 'text': prompt(task,OS)},
 
-            {'type': 'image', 
-             'image': {'url': f'data:image/png;base64,{screenCapture()}'}
-            }
-          ]
-        }],
-        max_tokens=2000
-      )
-      data = response.choices[0].message.content
-      print(data)
-      caching(data,'write')
-      return clean_data(data)
-    except Exception as e:
-      print('error at reason --> ',e)
-    
+          {'type': 'image', 
+            'image': {'url': f'data:image/png;base64,{screenCapture()}'}
+          }
+        ]
+      }],
+      max_tokens=2000
+    )
+    data = response.choices[0].message.content
+    cached(data,'write')
+    return clean_data(data)
+  except Exception as e:
+    print('error at reason --> ',e)
 
+#error checking to ensure the task has been completed
+def error_checking(task,screenshot,): #add a while loop
+  pass

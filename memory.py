@@ -1,4 +1,4 @@
-def caching(json_data,mode=None):
+def cached(json_data,mode=None):
     try:
         if mode == 'write':
             with open('task.json', 'w') as f:
