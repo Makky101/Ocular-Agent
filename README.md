@@ -1,12 +1,22 @@
 # Human Emulator
 
-Human Emulator is a Python desktop-automation prototype that converts a natural-language request into real mouse/keyboard actions.
+Human Emulator is a Python desktop-automation prototype that turns a natural-language task into **real mouse and keyboard actions**.
 
-It follows this flow:
-1. Capture the current screen.
-2. Send screenshot + user task to an LLM.
+It works in 4 stages:
+1. Capture the current desktop screenshot.
+2. Send screenshot + task to an LLM.
 3. Receive a JSON action plan.
-4. Execute that plan with `pyautogui`.
+4. Execute the plan with `pyautogui`.
+
+---
+
+## Safety Notice
+
+This project controls your **actual desktop session**. It can move your mouse, click, type, and press keys.
+
+- Run it only when you can watch what it is doing.
+- Close sensitive apps/documents first.
+- Keep PyAutoGUI fail-safe enabled (already enabled in `main.py`): move the cursor to a screen corner to trigger a fail-safe exception.
 
 ---
 
@@ -14,37 +24,18 @@ It follows this flow:
 
 - Natural-language task input from terminal.
 - Multimodal planning (text + screenshot).
-- Action-plan execution with `moveto`, `click`, `type`, `press`, `wait`, etc.
-- Separate file-based caches for task planning vs verification status.
-
----
-
-## Project Structure
-
-- `main.py`  
-  Entry point and action executor (`automate`).
-
-- `reasoning.py`  
-  Prompt generation, model call, response cleanup/parsing, and verification loop helpers.
-
-- `screenCapture.py`  
-  Primary-monitor screenshot capture utility.
-
-- `memory.py`  
-  Cache helpers for task cache:
-  - `task_output.json`
-  - `task_instruction.txt`
-
-- `requirements.txt`  
-  Python dependencies.
+- Action-plan execution with `moveto`, `click`, `doubleclick`, `rightclick`, `type`, `press`, `wait`, and `dragto`.
+- Basic file-based caching for latest task/output.
+- Simple random-command smoke test (`test.py`).
 
 ---
 
 ## Requirements
 
 - Python 3.10+
-- Windows desktop session (active GUI)
-- Hugging Face API key in `.env` as `API_KEY`
+- Windows desktop session with active GUI
+- Internet access for LLM API calls
+- Hugging Face API token in `.env` as `API_KEY`
 
 ---
 
@@ -58,7 +49,7 @@ python -m venv .venv
 pip install -r requirements.txt
 ```
 
-Create `.env` in project root:
+Create a `.env` file in the project root:
 
 ```env
 API_KEY=your_huggingface_token_here
@@ -72,30 +63,29 @@ API_KEY=your_huggingface_token_here
 python main.py
 ```
 
-Example tasks:
+Example prompts:
 - `open chrome`
 - `open vscode`
 - `open calculator`
 
 ---
 
-## Verification + Caching Flow (Updated)
+## How It Works (Code Overview)
 
-The runtime now separates data responsibilities so files are not overwritten by unrelated steps:
+- `main.py`  
+  Entry point and action executor (`automate`).
 
-1. `reason(..., default=True)`
-   - gets model action-plan response
-   - parses it as JSON for automation
-   - writes raw plan + task into task cache files
+- `reasoning.py`  
+  Prompt builder, LLM call, response cleaning/parsing, and verification helpers.
 
-2. `error_checking()`
-   - reads task cache (task + last plan)
-   - calls verifier mode (`default=False`)
-   - returns normalized verifier status directly (`edit` or exit path)
+- `screenCapture.py`  
+  Captures primary monitor screenshot for multimodal input.
 
-3. `main.py` retry loop
-   - reruns automation only when status is exactly `edit`
-   - exits loop for any other status
+- `memory.py`  
+  Simple cache for latest model output and instruction text.
+
+- `test.py`  
+  Randomized smoke test that pipes a generated command into `main.py`.
 
 ---
 
@@ -128,25 +118,25 @@ Supported `keyword` values:
 
 ---
 
-## Current Limitations
+## Quick Test
 
-- Runs directly on your active desktop (real cursor/keyboard control).
-- Response cleaning is still lightweight; malformed model output can fail parsing.
-- Memory is temporary file-based caching, not long-term stateful memory.
-- The verifier expects plain-text status (`edit` recommended for retry). Keep prompt/output contract consistent.
+```bash
+python test.py
+```
 
----
-
-## Recent Maintenance Update
-
-- Improved code comments and docstrings in core modules:
-  - `main.py`
-  - `reasoning.py`
-  - `screenCapture.py`
-  - `memory.py`
+This runs one randomized command through `main.py` as a basic smoke check.
 
 ---
 
-## License
+## Docker
 
-No license file is currently included. Add a `LICENSE` before public distribution.
+A `Dockerfile` is included, but note: this project depends on live GUI desktop interaction and screenshot capture. Running it in a standard container usually won’t provide a usable desktop session.
+
+---
+
+## Known Limitations
+
+- Uses your active desktop directly (not sandboxed).
+- JSON cleanup/parsing is lightweight and may fail on malformed model output.
+- Cache/memory is local and temporary (not long-term task memory).
+- Reliability depends heavily on current screen state and accurate coordinate planning.
