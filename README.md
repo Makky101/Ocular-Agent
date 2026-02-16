@@ -1,41 +1,41 @@
 # Human Emulator
 
-`Human Emulator` is a desktop automation prototype that turns a natural-language task into executable UI actions.
+Human Emulator is a Python desktop-automation prototype that converts a natural-language request into real mouse/keyboard actions.
 
-It works by:
-
-1. Capturing your current screen
-2. Sending screenshot + task to an LLM
-3. Receiving a JSON action plan
-4. Executing that plan with `pyautogui`
-
----
-
-## Current status
-
-- Core loop is functional (`main.py` -> `reasoning.py` -> `automate()`)
-- Real mouse/keyboard actions are enabled in `main.py`
-- Action plans are generated via Hugging Face Inference API (`InferenceClient`)
-- `memory.py` currently stores/retrieves raw AI output in `task.json`
+It follows this flow:
+1. Capture the current screen.
+2. Send screenshot + user task to an LLM.
+3. Receive a JSON action plan.
+4. Execute that plan with `pyautogui`.
 
 ---
 
-## Project structure
+## Features
+
+- Natural-language task input from terminal.
+- Multimodal planning (text + screenshot).
+- Action-plan execution with `moveto`, `click`, `type`, `press`, `wait`, etc.
+- Basic file-based memory for latest task/output.
+- Simple random-command smoke test script.
+
+---
+
+## Project Structure
 
 - `main.py`  
-  Entry point. Reads user task, gets reasoning output, executes UI actions.
+  Entry point and action executor (`automate`).
 
 - `reasoning.py`  
-  Builds prompt, sends screenshot + task to model, cleans/parses JSON response.
+  Prompt generation, model call, response cleanup/parsing, and verification loop helpers.
 
 - `screenCapture.py`  
-  Captures monitor screenshot using `mss`.
+  Primary-monitor screenshot capture utility.
 
 - `memory.py`  
-  Simple file-based cache helper for task output (`task.json`).
+  Minimal cache layer for latest model output and instruction.
 
 - `test.py`  
-  Launches `main.py` with a randomized command for quick smoke testing.
+  Runs a random task against `main.py` for a quick smoke check.
 
 - `requirements.txt`  
   Python dependencies.
@@ -45,36 +45,22 @@ It works by:
 ## Requirements
 
 - Python 3.10+
-- Windows desktop environment
-- Hugging Face API token (used as `API_KEY`)
+- Windows desktop session (active GUI)
+- Hugging Face API key in `.env` as `API_KEY`
 
 ---
 
 ## Setup
 
-1. Clone the repository
-
 ```bash
 git clone https://github.com/Makky101/Human-Emulator.git
 cd Human-Emulator
-```
-
-2. Create and activate a virtual environment
-
-```bash
 python -m venv .venv
 .venv\Scripts\activate
-```
-
-3. Install dependencies
-
-```bash
 pip install -r requirements.txt
 ```
 
-4. Add environment variable
-
-Create a `.env` file in the project root:
+Create `.env` in project root:
 
 ```env
 API_KEY=your_huggingface_token_here
@@ -82,25 +68,22 @@ API_KEY=your_huggingface_token_here
 
 ---
 
-## Usage
-
-Run:
+## Run
 
 ```bash
 python main.py
 ```
 
-Then provide a task, for example:
-
+Example tasks:
 - `open chrome`
 - `open vscode`
 - `open calculator`
 
 ---
 
-## Action schema expected from model
+## Action Plan Schema
 
-The executor expects a JSON array like:
+The executor expects a JSON array of steps:
 
 ```json
 [
@@ -116,7 +99,6 @@ The executor expects a JSON array like:
 ```
 
 Supported `keyword` values:
-
 - `moveto`
 - `click`
 - `doubleclick`
@@ -128,36 +110,34 @@ Supported `keyword` values:
 
 ---
 
-## Notes / limitations
-
-- Automation runs on your active desktop session; unexpected cursor/keyboard movement can interrupt tasks.
-- `clean_data()` in `reasoning.py` is basic and may fail on malformed model responses.
-- `reasoning.py` still imports `google.genai`, but current execution path uses `huggingface_hub.InferenceClient`.
-- `memory.py` is minimal and not yet a true long-term memory system.
-
----
-
-## Quick test
+## Quick Test
 
 ```bash
 python test.py
 ```
 
-This runs `main.py` with one random command from a predefined list.
+This runs one randomized command through `main.py`.
 
 ---
 
-## Roadmap
+## Current Limitations
 
-- Add strict response schema validation before automation
-- Add retry and fallback behavior when plan generation is invalid
-- Improve coordinate robustness (multi-monitor, scaling, app states)
-- Add unit/integration tests for parser + executor
-- Expand memory layer beyond basic file caching
+- Runs directly on your active desktop (real cursor/keyboard control).
+- Response cleaning is still lightweight; malformed model output can fail parsing.
+- Memory is temporary file-based caching, not long-term stateful memory.
+
+---
+
+## Recent Maintenance Update
+
+- Improved code comments and docstrings in core modules:
+  - `main.py`
+  - `reasoning.py`
+  - `screenCapture.py`
+  - `memory.py`
 
 ---
 
 ## License
 
-No license file is currently included.
-Add a `LICENSE` file before public distribution.
+No license file is currently included. Add a `LICENSE` before public distribution.
