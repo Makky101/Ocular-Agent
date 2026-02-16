@@ -128,15 +128,18 @@ This runs one randomized command through `main.py` as a basic smoke check.
 
 ---
 
-## Docker
+## Current Limitations
 
-A `Dockerfile` is included, but note: this project depends on live GUI desktop interaction and screenshot capture. Running it in a standard container usually won’t provide a usable desktop session.
+- Runs directly on your active desktop (real cursor/keyboard control).
+- Response cleaning is still lightweight; malformed model output can fail parsing.
+- Memory is temporary file-based caching, not long-term stateful memory.
 
 ---
 
-## Known Limitations
+## Recent Maintenance Update
 
-- Uses your active desktop directly (not sandboxed).
-- JSON cleanup/parsing is lightweight and may fail on malformed model output.
-- Cache/memory is local and temporary (not long-term task memory).
-- Reliability depends heavily on current screen state and accurate coordinate planning.
+- Improved code comments and docstrings in core modules:
+  - `main.py`
+  - `reasoning.py`
+  - `screenCapture.py`
+  - `memory.py`
