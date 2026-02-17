@@ -88,7 +88,6 @@ def run_case(test_case: TestCase, timeout_seconds: int = 30) -> bool:
 
     passed = result.returncode == 0
     print("PASS" if passed else "FAIL")
-    return passed
 
 
 def run_test_suite():
@@ -96,11 +95,8 @@ def run_test_suite():
         name="random cmd",
         command=random.choice(cmd),
     )
-
-    if run_case(test_case):
-        print("\n=== Test Summary ===")
-        print(f"It passed")
-
+    
+    run_case(test_case)
 
 
 if __name__ == "__main__":
