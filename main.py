@@ -3,7 +3,6 @@ from reasoning import reason,error_checking
 import time
 
 """Main automation entry point.
-
 This module converts an AI-generated action plan into concrete UI actions
 using PyAutoGUI.
 """
@@ -11,11 +10,11 @@ using PyAutoGUI.
 # Automate Task
 def automate(steps):
   """Execute a list of automation steps produced by the reasoning layer.
-
   Args:
     steps: List of step dictionaries. Each step must contain an `action` list
       with action dictionaries using keywords such as `moveto`, `click`, etc.
   """
+  
   auto.PAUSE = 3.0
   auto.FAILSAFE = True
 
@@ -84,6 +83,8 @@ def main():
     userInput = input('What task do you want me to perform: ')
     # Generate step-by-step actions from the current desktop screenshot.
     response = reason(userInput,default=True,OS=None)
+    
+    print('do not touch the machine!')
 
     # Run the proposed action sequence.
     automate(response)
