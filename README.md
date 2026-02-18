@@ -33,7 +33,6 @@ This project controls your **actual desktop session**. It can move your mouse, c
 ## Requirements
 
 - Python 3.10+
-- Windows desktop session with active GUI
 - Internet access for LLM API calls
 - Hugging Face API token in `.env` as `API_KEY`
 
