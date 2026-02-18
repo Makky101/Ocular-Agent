@@ -89,8 +89,12 @@ def main():
     automate(response)
 
     # If verification asks for edits, retry the same response.
-    while error_checking() == 'edit':
-      automate(response)
+    while True:
+      status = error_checking()
+      if status == 'edit':
+        automate(response)
+      else:
+        break
   except Exception as e:
     print('error at main --> ', e)
 

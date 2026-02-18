@@ -15,8 +15,7 @@ It follows this flow:
 - Natural-language task input from terminal.
 - Multimodal planning (text + screenshot).
 - Action-plan execution with `moveto`, `click`, `type`, `press`, `wait`, etc.
-- Basic file-based memory for latest task/output.
-- Simple random-command smoke test script.
+- Separate file-based caches for task planning vs verification status.
 
 ---
 
@@ -32,10 +31,9 @@ It follows this flow:
   Primary-monitor screenshot capture utility.
 
 - `memory.py`  
-  Minimal cache layer for latest model output and instruction.
-
-- `test.py`  
-  Runs a random task against `main.py` for a quick smoke check.
+  Cache helpers for task cache:
+  - `task_output.json`
+  - `task_instruction.txt`
 
 - `requirements.txt`  
   Python dependencies.
@@ -81,6 +79,26 @@ Example tasks:
 
 ---
 
+## Verification + Caching Flow (Updated)
+
+The runtime now separates data responsibilities so files are not overwritten by unrelated steps:
+
+1. `reason(..., default=True)`
+   - gets model action-plan response
+   - parses it as JSON for automation
+   - writes raw plan + task into task cache files
+
+2. `error_checking()`
+   - reads task cache (task + last plan)
+   - calls verifier mode (`default=False`)
+   - returns normalized verifier status directly (`edit` or exit path)
+
+3. `main.py` retry loop
+   - reruns automation only when status is exactly `edit`
+   - exits loop for any other status
+
+---
+
 ## Action Plan Schema
 
 The executor expects a JSON array of steps:
@@ -110,21 +128,12 @@ Supported `keyword` values:
 
 ---
 
-## Quick Test
-
-```bash
-python test.py
-```
-
-This runs one randomized command through `main.py`.
-
----
-
 ## Current Limitations
 
 - Runs directly on your active desktop (real cursor/keyboard control).
 - Response cleaning is still lightweight; malformed model output can fail parsing.
 - Memory is temporary file-based caching, not long-term stateful memory.
+- The verifier expects plain-text status (`edit` recommended for retry). Keep prompt/output contract consistent.
 
 ---
 

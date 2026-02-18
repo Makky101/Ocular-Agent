@@ -1,7 +1,7 @@
 from screenCapture import screenCapture
 from dotenv import load_dotenv
 from huggingface_hub import InferenceClient
-from memory import cached
+from memory import task_cache_write, task_cache_read
 import os
 import json
 import re
@@ -170,7 +170,7 @@ def prompt(task,OS=None,LLM_response=None,default=None):
       msg = f'''You are a task verification assistant. You will be given:
         1. An original task/instruction
         2. The output produced by an LLM attempting to complete that task
-        3. (Optional) A screenshot showing the actual result
+        3. A screenshot showing the actual result
 
         Your job is to evaluate whether the LLM successfully completed the task as specified.
 
@@ -179,9 +179,7 @@ def prompt(task,OS=None,LLM_response=None,default=None):
         - Is the output in the correct format requested?
         - Does the output meet the quality standards implied by the task?
         - Did the LLM follow any specific constraints or requirements?
-        - If a screenshot is provided, does the visual output match what was requested?
-
-        If the task was completed successfully, respond with a brief confirmation of success.
+        - A screenshot will be provided, does the visual output match what was requested?
 
         If the task was NOT completed successfully, respond with only the word: edit
 
@@ -212,11 +210,10 @@ def clean_data(ai_output):
 
   json_text = json_text.strip()
   json_text = re.sub(r',\s*([}\]])', r'\1', json_text)
-  json_text = re.sub(r'^json```|```$','',json_text)
-
+  
   try:
-    print(json_text)
     return json.loads(json_text)
+  
   except json.JSONDecodeError as e:
     raise ValueError(f"Invalid JSON from AI: {e}") 
 
@@ -234,7 +231,7 @@ def reason(task,default=None,LLMR=None,OS=None):
       messages=[{
         'role':'user',
         'content':[
-          {'type':'text', 'text': prompt(task,default,OS,LLM_response=LLMR)},
+          {'type':'text', 'text': prompt(task,default=default,OS=OS,LLM_response=LLMR)},
 
           {'type': 'image', 
             'image': {'url': f'data:image/png;base64,{screenCapture()}'}
@@ -245,9 +242,15 @@ def reason(task,default=None,LLMR=None,OS=None):
     )
     data = response.choices[0].message.content
 
-    # Persist raw model output with task for optional verification pass.
-    cached(data,task,'write')
-    return clean_data(data)
+    # Verification mode expects plain text status (e.g., 'edit').
+    if not default:
+      return str(data).strip()
+
+    parsed = clean_data(data)
+
+    # Persist cache only for task-generation flow.
+    task_cache_write(task, data)
+    return parsed
   except Exception as e:
     print('error at reason --> ',e)
 
@@ -255,7 +258,17 @@ def reason(task,default=None,LLMR=None,OS=None):
 # Error checking to ensure the task has been completed.
 def error_checking():
   """Run the lightweight verifier prompt against cached task + output."""
-  response = cached()
-  data,task = response[0], response[1]
-  result = reason(task,LLMR=data)
-  return result
+  try:
+    cached_data = task_cache_read()
+    if not cached_data:
+      return 'exit'
+
+    task, data = cached_data
+    result = reason(task, default=False, LLMR=data)
+
+    # Normalise verifier result to a simple status string.
+    status = str(result).strip().lower()
+    return status if status else 'exit'
+  except Exception as e:
+    print('error at error_checking ->', e)
+    return 'exit'
