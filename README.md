@@ -127,12 +127,6 @@ This runs one randomized command through `main.py` as a basic smoke check.
 
 ---
 
-## Docker
-
-A `Dockerfile` is included, but note: this project depends on live GUI desktop interaction and screenshot capture. Running it in a standard container usually won’t provide a usable desktop session.
-
----
-
 ## Known Limitations
 
 - Uses your active desktop directly (not sandboxed).
