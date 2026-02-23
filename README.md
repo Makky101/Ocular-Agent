@@ -62,7 +62,9 @@ API_KEY=your_huggingface_token_here
 python main.py
 ```
 
-Example prompts:
+> **Safety note:** This tool controls your real mouse and keyboard. Close sensitive windows and save your work before running automation tasks.
+
+Example prompts/tasks:
 - `open chrome`
 - `open vscode`
 - `open calculator`
@@ -133,4 +135,5 @@ This runs one randomized command through `main.py` as a basic smoke check.
 - JSON cleanup/parsing is lightweight and may fail on malformed model output.
 - Cache/memory is local and temporary (not long-term task memory).
 - Reliability depends heavily on current screen state and accurate coordinate planning.
+
 
