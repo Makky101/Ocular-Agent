@@ -72,6 +72,8 @@ API_KEY=your_huggingface_token_here
 python main.py
 ```
 
+> **Safety note:** This tool controls your real mouse and keyboard. Close sensitive windows and save your work before running automation tasks.
+
 Example tasks:
 - `open chrome`
 - `open vscode`
