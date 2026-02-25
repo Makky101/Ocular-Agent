@@ -1,5 +1,6 @@
 from screenCapture import screenCapture
 from dotenv import load_dotenv
+import pyautogui as auto
 from huggingface_hub import InferenceClient
 from memory import task_cache_write, task_cache_read
 import os
@@ -30,7 +31,13 @@ def prompt(task,OS=None,LLM_response=None,default=None):
       default: When True, builds the main action-planning prompt.
     """
     if default:
-      msg = f"""You are a **Technical Operator AI** that automates computer tasks by analyzing screenshots and generating precise action sequences.
+      screen_w, screen_h = auto.size()
+      msg = f"""
+      You are a **Technical Operator AI** that automates computer tasks by analyzing screenshots and generating precise action sequences.
+
+      ## SCREEN RESOLUTION:
+      The screenshot is from a {screen_w}x{screen_h} pixel display.
+      All coordinates you provide must be within these bounds.
 
       **CURRENT TASK:** {task}
 
@@ -62,8 +69,24 @@ def prompt(task,OS=None,LLM_response=None,default=None):
       | `doubleclick` | Double click | `co-ord` {{x, y}} |
       | `dragto` | Click and drag to destination | `co-ord` {{x, y}} |
       | `type` | Type text into focused field | `text` |
-      | `press` | Press special key | `key` (enter, backspace, space, tab, esc, delete, etc.) |
+      | `press` | Press special key | `key` (enter, backspace, space, tab, esc, delete, win, etc.) |
+      | `hotkey` | Press key combination | `keys` (list of keys e.g. ["ctrl", "l"]) |
       | `wait` | Pause execution | `duration` (seconds) |
+
+      ## KEYBOARD SHORTCUTS REFERENCE (always prefer these over mouse clicks on system UI):
+
+      | Task | Action to use |
+      |------|--------------|
+      | Open Start menu | `press` with key `win` |
+      | Open Run dialog | `hotkey` with keys `["win", "r"]` |
+      | Open File Explorer | `hotkey` with keys `["win", "e"]` |
+      | Switch windows | `hotkey` with keys `["alt", "tab"]` |
+      | Close window | `hotkey` with keys `["alt", "f4"]` |
+      | New tab in browser | `hotkey` with keys `["ctrl", "t"]` |
+      | Focus browser address bar | `hotkey` with keys `["ctrl", "l"]` |
+      | Select all text | `hotkey` with keys `["ctrl", "a"]` |
+      | Copy | `hotkey` with keys `["ctrl", "c"]` |
+      | Paste | `hotkey` with keys `["ctrl", "v"]` |
 
       ---
 
@@ -142,6 +165,9 @@ def prompt(task,OS=None,LLM_response=None,default=None):
       - Group related actions in the same step (e.g., type + press enter)
 
       ### Best Practices:
+      - **KEYBOARD FIRST**: Always use keyboard shortcuts instead of clicking system UI elements
+      - Never click the Start button, taskbar, or system tray with coordinates — use keyboard shortcuts instead
+      - Only use `moveto` + `click` for elements inside apps (buttons, text fields) that have no keyboard shortcut
       - Think like a careful human user (not too fast, not too slow)
       - Include 1-3 second waits after clicks that load new content
       - Be precise with coordinates (center of buttons, not edges)
@@ -201,7 +227,7 @@ def clean_data(ai_output):
   The model is expected to return plain JSON, but this helper tolerates
   occasional code fences or trailing commas.
   """
-  match = re.search(r'```(?:json)?\s*([\s\S*?])\s*```',ai_output)
+  match = re.search(r'```(?:json)?\s*([\s\S]*?)\s*```', ai_output)
   if match:
     json_text = match.group(1)
   else:
