@@ -1,6 +1,7 @@
 import pyautogui as auto
 from reasoning import reason,error_checking
 import time
+import platform
 
 
 """Main automation entry point.
@@ -84,13 +85,20 @@ def automate(steps):
 
 def main():
   """Collect a user task, generate an action plan, and execute it."""
+  def get_os():
+    system = platform.system()
+    if system == "Darwin":
+      return "mac"
+    elif system == "Windows":
+      return "windows"
+    return "linux"
   try:
     # Prompt user for a natural-language task.
     userInput = input('What task do you want me to perform: ')
     print('Do not touch the machine!')
     print('Automation in progress...')
     # Generate step-by-step actions from the current desktop screenshot.
-    response = reason(userInput,default=True,OS=None)
+    response = reason(userInput,default=True,OS=get_os())
 
     # Run the proposed action sequence.
     automate(response)
