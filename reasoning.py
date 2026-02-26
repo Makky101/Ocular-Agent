@@ -294,6 +294,7 @@ def error_checking():
 
     # Normalise verifier result to a simple status string.
     status = str(result).strip().lower()
+    print(status)
     return status if status else 'exit'
   except Exception as e:
     print('error at error_checking ->', e)

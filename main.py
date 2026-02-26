@@ -5,7 +5,6 @@ import platform
 
 
 """Main automation entry point.
-
 This module converts an AI-generated action plan into concrete UI actions
 using PyAutoGUI.
 """
@@ -116,6 +115,6 @@ def main():
   except Exception as e:
     print('error at main --> ', e)
 
-# I just did this cause it is a tradition 😂 I do know the meaning!
+# I just did this cause it is a tradition I do know the meaning!
 if __name__ == "__main__":
   main()
