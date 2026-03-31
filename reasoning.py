@@ -1,8 +1,9 @@
-from screenCapture import screenCapture
+from screenCapture import screenTake
 from dotenv import load_dotenv
 import pyautogui as auto
 from huggingface_hub import InferenceClient
-from memory import task_cache_write, task_cache_read
+from memory import cache
+import base64
 import os
 import json
 import re
@@ -10,27 +11,30 @@ import re
 # Load .env values once at import so API_KEY is available.
 load_dotenv()
 
-"""Reasoning layer.
+class Reason:
+  """Reasoning layer.
+  This module:
+  1) captures the current screen,
+  2) prompts an LLM to produce an action-plan JSON,
+  3) sanitizes/parses the response,
+  4) stores and reuses latest task/output for basic verification.
+  """
 
-This module:
-1) captures the current screen,
-2) prompts an LLM to produce an action-plan JSON,
-3) sanitizes/parses the response,
-4) stores and reuses latest task/output for basic verification.
-"""
+  def __init__(self,task,OS="windows"):
+    self.task = task
+    self.OS = OS
+    self.cache = cache()
 
-
-# Prompt builder
-def prompt(task,OS=None,LLM_response=None,default=None):
-    """Create prompt text for either task execution or result verification.
-
-    Args:
-      task: Natural-language task requested by the user.
-      OS: Optional operating system hint.
-      LLM_response: Prior model output to verify when in checking mode.
-      default: When True, builds the main action-planning prompt.
-    """
-    if default:
+  # Prompt builder
+  def planning_prompt(self,feedback=None):
+      """Create prompt text for either task execution or result verification.
+      Args:
+        task: Natural-language task requested by the user.
+        OS: Operating system.
+        LLM_response: Prior model output to verify when in checking mode.
+        default: When True, builds the main action-planning prompt.
+      """
+  
       screen_w, screen_h = auto.size()
       msg = f"""
       You are a **Technical Operator AI** that automates computer tasks by analyzing screenshots and generating precise action sequences.
@@ -39,7 +43,8 @@ def prompt(task,OS=None,LLM_response=None,default=None):
       The screenshot is from a {screen_w}x{screen_h} pixel display.
       All coordinates you provide must be within these bounds.
 
-      **CURRENT TASK:** {task}
+      **OPERATING SYSTEM**: {self.OS}
+      **CURRENT TASK**: {self.task}
 
       ---
 
@@ -190,112 +195,145 @@ def prompt(task,OS=None,LLM_response=None,default=None):
 
       ---
 
-      Now analyze the screenshot and generate your complete JSON action plan for: **{task}**
+      Now analyze the screenshot and generate your complete JSON action plan for: **{self.task}**
       """
-    else:
-      msg = f'''You are a task verification assistant. You will be given:
-        1. An original task/instruction
-        2. The output produced by an LLM attempting to complete that task
-        3. A screenshot showing the actual result
 
-        Your job is to evaluate whether the LLM successfully completed the task as specified.
+      if feedback:
+        msg += f"\n\nNOTE: previous attempt failed: {feedback}\nPlease adjust the plan acordingly."
 
-        Evaluation criteria:
-        - Did the LLM address all parts of the task?
-        - Is the output in the correct format requested?
-        - Does the output meet the quality standards implied by the task?
-        - Did the LLM follow any specific constraints or requirements?
-        - A screenshot will be provided, does the visual output match what was requested?
+      return msg
+  
+  def verification_prompt(self,task,output):
+    msg = f'''You are a task verification assistant. You will be given:
+      1. An original task/instruction
+      2. The output produced by an LLM attempting to complete that task
+      3. A screenshot showing the actual result
+      4. The Operating system used
 
-        If the task was NOT completed successfully, respond with only the word: edit
+      Your job is to evaluate whether the LLM successfully completed the task as specified.
 
-        ---
+      Evaluation criteria:
+      - Did the LLM address all parts of the task?
+      - Is the output in the correct format requested?
+      - Does the output meet the quality standards implied by the task?
+      - Did the LLM follow any specific constraints or requirements?
+      - A screenshot will be provided, does the visual output match what was requested?
+      ---
+      OPERATING SYSTEM:
+      {self.OS}
 
-        ORIGINAL TASK:
-        {task}
+      ORIGINAL TASK:
+      {task}
 
-        LLM OUTPUT:
-        {LLM_response}
-        '''
+      LLM OUTPUT:
+      {output}
+
+      Return **ONLY** JSON:
+      {{
+        "status": "edit" or "exit",
+        "reason" : "Explain why it failed (if any)"
+      }}
+      '''
     return msg
 
 
-# Clean and parse model output into Python JSON.
-def clean_data(ai_output):
-  """Extract the first JSON array-like payload from model text output.
+  # Clean and parse model output into Python JSON.
+  def clean_data(self,ai_output):
+    """Extract the first JSON array-like payload from model text output.
 
-  The model is expected to return plain JSON, but this helper tolerates
-  occasional code fences or trailing commas.
-  """
-  match = re.search(r'```(?:json)?\s*([\s\S]*?)\s*```', ai_output)
-  if match:
-    json_text = match.group(1)
-  else:
-    match = re.search(r'\[[\s\S]*\]',ai_output)
-    json_text = match.group() if match else ai_output
+    The model is expected to return plain JSON, but this helper tolerates
+    occasional code fences or trailing commas.
+    """
 
-  json_text = json_text.strip()
-  json_text = re.sub(r',\s*([}\]])', r'\1', json_text)
-  
-  try:
-    return json.loads(json_text)
-  
-  except json.JSONDecodeError as e:
-    raise ValueError(f"Invalid JSON from AI: {e}") 
+    if not ai_output:
+      raise ValueError("AI output is empty")
+    
+    match = re.search(r'```(?:json)?\s*([\s\S]*?)\s*```', ai_output)
+    if match:
+      json_text = match.group(1)
+    else:
+      match = re.search(r'\[[\s\S]*\]',ai_output)
+      json_text = match.group() if match else ai_output
 
-
-# LLM generates a checklist and follows it.
-def reason(task,default=None,LLMR=None,OS=None):
-  """Request an action plan (or verification) from the configured LLM."""
-  try:
-    # Initialize Hugging Face inference client using API key from env.
-    client = InferenceClient(token=os.environ.get("API_KEY"))
-
-    # Send multimodal request: prompt text + current screenshot.
-    response = client.chat_completion(
-      model= 'moonshotai/Kimi-K2.5:novita',
-      messages=[{
-        'role':'user',
-        'content':[
-          {'type':'text', 'text': prompt(task,default=default,OS=OS,LLM_response=LLMR)},
-
-          {'type': 'image', 
-            'image': {'url': f'data:image/png;base64,{screenCapture()}'}
-          }
-        ]
-      }],
-      max_tokens=2000
-    )
-    data = response.choices[0].message.content
-
-    # Verification mode expects plain text status (e.g., 'edit').
-    if not default:
-      return str(data).strip()
-
-    parsed = clean_data(data)
-
-    # Persist cache only for task-generation flow.
-    task_cache_write(task, data)
-    return parsed
-  except Exception as e:
-    print('error at reason --> ',e)
+    json_text = json_text.strip()
+    json_text = re.sub(r',\s*([}\]])', r'\1', json_text)
+    
+    try:
+      return json.loads(json_text)
+    
+    except json.JSONDecodeError as e:
+      raise ValueError(f"Invalid JSON from AI: {e}") 
 
 
-# Error checking to ensure the task has been completed.
-def error_checking():
-  """Run the lightweight verifier prompt against cached task + output."""
-  try:
-    cached_data = task_cache_read()
-    if not cached_data:
-      return 'exit'
+  # LLM generates a checklist and follows it.
+  def generate_plan(self,feedback=None):
+    try:
+      raw = self._call_model(self.planning_prompt(feedback))
+      parsed = self.clean_data(raw)
 
-    task, data = cached_data
-    result = reason(task, default=False, LLMR=data)
+      # write to file
+      self.cache.task_cache_write(self.task, raw)
 
-    # Normalise verifier result to a simple status string.
-    status = str(result).strip().lower()
-    print(status)
-    return status if status else 'exit'
-  except Exception as e:
-    print('error at error_checking ->', e)
-    return 'exit'
+      return parsed
+    except Exception as e:
+      raise RuntimeError(f"error at generate_plan: {e}")
+
+  # Ensure the task was carried out successfully
+  # Error checking to ensure the task has been completed.
+  def verify_execution(self):
+    """Run the lightweight verifier prompt against cached task + output."""
+    try:
+      cached = self.cache.task_cache_read()
+      if not cached:
+        return {"status": "exit", "reason": ""}
+      
+      task, output = cached
+
+      raw_result = self._call_model(self.verification_prompt(task,output))
+      result = self.clean_data(raw_result)
+      status = result.get("status", "exit").lower()
+      reason = result.get("reason", "")
+
+      return {"status":status,"reason":reason}
+    except Exception as e:
+      return {"status": "edit", "reason": f"Verification crashed: {e}"}
+    
+  #Call the LLM
+  def _call_model(self,prompt):
+    """Request an action plan (or verification) from the configured LLM."""
+    try:
+      # Initialize Hugging Face inference client using API key from env.
+      client = InferenceClient(token=os.environ.get("API_KEY"))
+
+      #turn bytes img to base64 encoded string
+      
+      img_b64 = base64.b64encode(screenTake.screenCapture()).decode('utf-8')
+
+      # Send multimodal request: prompt text + current screenshot.
+      response = client.chat_completion(
+        model= 'moonshotai/Kimi-K2.5:novita',
+        messages=[{
+          'role':'user',
+          'content':[
+            {'type':'text', 'text': prompt},
+
+            {'type': 'image', 
+              'image': {'url': f'data:image/png;base64,{img_b64}'}
+            }
+          ]
+        }],
+        max_tokens=2000
+      )
+      
+      if not response or not response.choices:
+        raise RuntimeError("Empty response from model")
+      
+      content = response.choices[0].message.content
+
+      if not content:
+        raise RuntimeError("Model returned empty content")
+      
+      return content
+    
+    except Exception as e:
+      raise RuntimeError(f"error at reason: {e}")
