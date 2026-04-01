@@ -37,10 +37,8 @@ def main():
     if not result:
       raise Exception("Failed to generate plan. Exiting...")
 
-    execute.automate(result)
+    execute.automate(result,response)
     
-    # If verification asks for 'edit', retry the same response.
-    execute.retry(response)
   except Exception as e:
     print('SOMETHING WENT WRONG! -->',e,file=sys.stderr)
 

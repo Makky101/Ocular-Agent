@@ -4,7 +4,6 @@ from PIL import Image
 from io import BytesIO
 
 class screenTake:
-
     """Screen capture utility.
     Captures the primary monitor and returns PNG bytes that can be attached to
     LLM multimodal requests.

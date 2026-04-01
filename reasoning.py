@@ -278,26 +278,23 @@ class Reason:
     except Exception as e:
       raise RuntimeError(f"error at generate_plan: {e}")
 
-  # Ensure the task was carried out successfully
-  # Error checking to ensure the task has been completed.
-  def verify_execution(self):
-    """Run the lightweight verifier prompt against cached task + output."""
-    try:
-      cached = self.cache.task_cache_read()
-      if not cached:
-        return {"status": "exit", "reason": ""}
-      
-      task, output = cached
+  #step verification prompt
+  def step_verification_prompt(self, step):
+    return f"""
+    Task: {self.task}
 
-      raw_result = self._call_model(self.verification_prompt(task,output))
-      result = self.clean_data(raw_result)
-      status = result.get("status", "exit").lower()
-      reason = result.get("reason", "")
+    Current step:
+    {step['step']}
 
-      return {"status":status,"reason":reason}
-    except Exception as e:
-      return {"status": "edit", "reason": f"Verification crashed: {e}"}
-    
+    Did this step succeed based on the screenshot?
+
+    Return JSON:
+    {{
+      "status": "ok" or "fail",
+      "reason": "..."
+    }}
+    """    
+  
   #Call the LLM
   def _call_model(self,prompt):
     """Request an action plan (or verification) from the configured LLM."""
@@ -306,7 +303,6 @@ class Reason:
       client = InferenceClient(token=os.environ.get("API_KEY"))
 
       #turn bytes img to base64 encoded string
-      
       img_b64 = base64.b64encode(screenTake.screenCapture()).decode('utf-8')
 
       # Send multimodal request: prompt text + current screenshot.

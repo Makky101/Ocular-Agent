@@ -1,43 +1,51 @@
 # Human Emulator
 
-Human Emulator is a Python desktop-automation prototype that turns a natural-language task into **real mouse and keyboard actions** on your computer.
+Human Emulator is a Python desktop automation prototype that turns a natural-language instruction into real mouse and keyboard actions on your computer.
 
-It works in 4 stages:
+The project is built around a simple loop:
 1. Capture the current desktop screenshot.
-2. Send screenshot + task to an LLM (Kimi K2.5 via Hugging Face).
+2. Send the screenshot and task to an LLM.
 3. Receive a JSON action plan.
-4. Execute the plan with `pyautogui`, then verify and retry if needed.
+4. Execute the plan with `pyautogui`.
+5. Verify each step and retry with feedback if needed.
 
----
+## Safety
 
-## Safety Notice
-
-This project controls your **actual desktop session**. It can move your mouse, click, type, and press keys.
+This project controls your real desktop session.
 
 - Run it only when you can watch what it is doing.
-- Close sensitive apps/documents first.
-- PyAutoGUI fail-safe is enabled by default — move your cursor to any screen corner to abort immediately.
-
----
+- Close sensitive apps and documents first.
+- Do not touch your keyboard or mouse while a live run is in progress.
+- PyAutoGUI fail-safe is enabled, so moving the cursor to a screen corner should abort execution.
 
 ## Features
 
-- Natural-language task input from terminal.
-- Multimodal planning (text + live screenshot sent to LLM).
-- Action-plan execution with `moveto`, `click`, `doubleclick`, `rightclick`, `type`, `press`, `hotkey`, `wait`, and `dragto`.
-- Post-execution verification — the LLM checks a fresh screenshot and decides if the task succeeded.
-- Automatic retry loop (up to 3 attempts) with failure feedback passed back to the planner.
-- File-based caching for latest task and model output.
+- Natural-language task input from the terminal
+- Live screenshot capture with `mss`
+- Multimodal planning using a Hugging Face hosted model
+- JSON action plans with mouse and keyboard steps
+- Step verification with retry support
+- Local task/output caching
+- Basic unit tests for parsing, validation, and retry flow
 
----
-
-## Requirements
+## Tech Stack
 
 - Python 3.10+
-- Internet access for LLM API calls
-- Hugging Face API token in `.env` as `API_KEY`
+- `pyautogui`
+- `huggingface_hub`
+- `mss`
+- `numpy`
+- `Pillow`
+- `python-dotenv`
 
----
+## Project Structure
+
+- `main.py` - entry point that collects the task and starts the run
+- `reasoning.py` - prompt building, model calls, parsing, and verification prompts
+- `automate.py` - executes action plans and handles retry logic
+- `screenCapture.py` - captures the primary monitor as PNG bytes
+- `memory.py` - stores the latest task and model output locally
+- `tests/test_core.py` - unit tests for core non-desktop logic
 
 ## Setup
 
@@ -45,8 +53,7 @@ This project controls your **actual desktop session**. It can move your mouse, c
 git clone https://github.com/Makky101/Human-Emulator.git
 cd Human-Emulator
 python -m venv .venv
-.venv\Scripts\activate        # Windows
-# source .venv/bin/activate   # macOS / Linux
+.venv\Scripts\activate
 pip install -r requirements.txt
 ```
 
@@ -56,68 +63,22 @@ Create a `.env` file in the project root:
 API_KEY=your_huggingface_token_here
 ```
 
----
-
 ## Run
 
 ```bash
 python main.py
 ```
 
-You will be prompted to describe your task in plain English:
-
-```
-What task do you want me to perform: open chrome and search for weather
-```
-
 Example prompts:
+
 - `open chrome`
 - `open vscode`
 - `open calculator`
 - `open chrome and search for weather`
 
-> **Safety note:** This tool controls your real mouse and keyboard. Save your work and close sensitive windows before running.
+## Action Plan Format
 
----
-
-## How It Works
-
-```
-User input
-    │
-    ▼
-Screenshot captured
-    │
-    ▼
-LLM generates JSON action plan
-    │
-    ▼
-Actions executed (mouse + keyboard)
-    │
-    ▼
-LLM verifies result via fresh screenshot
-    │
-    ├── success → exit
-    └── failed  → retry with feedback (up to 3 times)
-```
-
----
-
-## Code Overview
-
-| File | Responsibility |
-|---|---|
-| `main.py` | Entry point — collects input, wires everything together |
-| `reasoning.py` | Prompt building, LLM calls, response parsing, verification |
-| `screenCapture.py` | Captures primary monitor and returns PNG bytes |
-| `memory.py` | File-based cache for latest task and model output |
-| `automate.py` | Executes action plan and manages retry loop |
-
----
-
-## Action Plan Schema
-
-The executor expects a JSON array of steps:
+The executor expects a JSON array of steps like this:
 
 ```json
 [
@@ -132,42 +93,47 @@ The executor expects a JSON array of steps:
 ]
 ```
 
-Supported `keyword` values:
+Supported action keywords:
 
-| Keyword | Purpose | Required Fields |
-|---|---|---|
-| `moveto` | Move mouse cursor | `co-ord` {x, y} |
-| `click` | Left click | `co-ord` (optional) |
-| `doubleclick` | Double click | `co-ord` (optional) |
-| `rightclick` | Right click | `co-ord` (optional) |
-| `dragto` | Click and drag | `co-ord` {x, y} |
-| `type` | Type text | `text` |
-| `press` | Press a key | `key` (e.g. `enter`, `win`) |
-| `hotkey` | Key combination | `keys` (e.g. `["ctrl", "l"]`) |
-| `wait` | Pause execution | `duration` (seconds) |
+- `moveto`
+- `click`
+- `doubleclick`
+- `rightclick`
+- `dragto`
+- `type`
+- `press`
+- `hotkey`
+- `wait`
 
----
+## Verification Format
 
-## Verification Schema
-
-After execution, the verifier returns:
+Step verification currently expects JSON shaped like:
 
 ```json
 {
-  "status": "exit",
+  "status": "ok",
   "reason": ""
 }
 ```
 
-- `exit` — task completed successfully, stop.
-- `edit` — task failed; `reason` is passed back to the planner for a better attempt.
+If verification returns `"fail"`, the system asks the planner for a new plan and retries.
 
----
+## Run Tests
+
+```bash
+python -m unittest discover -s tests -v
+```
+
+Current tests cover:
+
+- plan validation
+- JSON cleanup and parsing
+- retry flow without triggering real desktop actions
 
 ## Known Limitations
 
-- Uses your active desktop directly — not sandboxed.
-- Coordinate accuracy depends on the LLM correctly reading the screenshot.
-- JSON parsing is lightweight and may struggle with heavily malformed model output.
-- Cache is local and temporary — no long-term task memory across sessions.
-- Retry loop is capped at 3 attempts.
+- It uses your active desktop directly and is not sandboxed.
+- Accuracy depends heavily on the model understanding the screenshot.
+- A bad plan can still click the wrong thing.
+- The project is still a prototype, not a hardened desktop agent.
+- End-to-end live automation is much less predictable than the unit tests.
