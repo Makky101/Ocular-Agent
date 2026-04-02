@@ -1,32 +1,55 @@
 # Human Emulator
 
-Human Emulator is a Python desktop automation prototype that turns a natural-language instruction into real mouse and keyboard actions on your computer.
+Human Emulator is a Python desktop automation prototype that turns a plain-English task into real mouse and keyboard actions on your computer.
 
-The project is built around a simple loop:
-1. Capture the current desktop screenshot.
-2. Send the screenshot and task to an LLM.
-3. Receive a JSON action plan.
-4. Execute the plan with `pyautogui`.
-5. Verify each step and retry with feedback if needed.
+It currently supports two ways to provide a task:
+
+- typed input from the terminal
+- voice input through your microphone, transcribed with Hugging Face speech recognition
+
+## AI-Assisted Development
+
+This project was built with AI-assisted coding support.
+
+- I used AI help while implementing and debugging parts of the project.
+- AI assistance was especially used around the voice-input and transcription flow.
+- AI assistance was also used to help revise parts of this README.
+
+The project idea, testing, and final decisions still came from me, but some coding and documentation work was AI-assisted.
+
+## How It Works
+
+The current loop looks like this:
+
+1. Ask the user for a task by text or voice.
+2. If voice mode is chosen, record audio, play it back, and transcribe it into text.
+3. Capture the current desktop screenshot.
+4. Send the screenshot and task to an LLM.
+5. Receive a JSON action plan.
+6. Execute the plan with `pyautogui`.
+7. Re-check the result and retry with feedback if needed.
+
+## Features
+
+- Typed terminal input for quick testing
+- Voice task input with microphone recording
+- Playback of the captured voice recording before transcription
+- Speech-to-text transcription using `openai/whisper-large-v3`
+- Screenshot capture with `mss`
+- LLM-based action-plan generation from screenshots and task text
+- JSON action plans with mouse and keyboard steps
+- Retry flow with verification prompts
+- Local caching of the latest task and model output
+- Basic unit tests for parsing and retry behavior
 
 ## Safety
 
 This project controls your real desktop session.
 
-- Run it only when you can watch what it is doing.
-- Close sensitive apps and documents first.
-- Do not touch your keyboard or mouse while a live run is in progress.
-- PyAutoGUI fail-safe is enabled, so moving the cursor to a screen corner should abort execution.
-
-## Features
-
-- Natural-language task input from the terminal
-- Live screenshot capture with `mss`
-- Multimodal planning using a Hugging Face hosted model
-- JSON action plans with mouse and keyboard steps
-- Step verification with retry support
-- Local task/output caching
-- Basic unit tests for parsing, validation, and retry flow
+- Run it only when you can watch it.
+- Close sensitive windows before starting.
+- Do not touch the keyboard or mouse during live automation.
+- PyAutoGUI fail-safe is enabled, so moving the pointer to a screen corner should stop execution.
 
 ## Tech Stack
 
@@ -37,15 +60,17 @@ This project controls your real desktop session.
 - `numpy`
 - `Pillow`
 - `python-dotenv`
+- `sounddevice`
 
 ## Project Structure
 
-- `main.py` - entry point that collects the task and starts the run
+- `main.py` - entry point, task collection, and run orchestration
+- `voice_input.py` - microphone recording, playback, temp WAV export, and speech-to-text
 - `reasoning.py` - prompt building, model calls, parsing, and verification prompts
-- `automate.py` - executes action plans and handles retry logic
-- `screenCapture.py` - captures the primary monitor as PNG bytes
-- `memory.py` - stores the latest task and model output locally
-- `tests/test_core.py` - unit tests for core non-desktop logic
+- `automate.py` - action execution and retry handling
+- `screenCapture.py` - screenshot capture
+- `memory.py` - lightweight task/output caching
+- `tests/test_core.py` - unit tests for core logic
 
 ## Setup
 
@@ -69,16 +94,54 @@ API_KEY=your_huggingface_token_here
 python main.py
 ```
 
-Example prompts:
+When the app starts, you will be prompted with:
+
+```text
+Press Enter to type your task or type 'voice' to speak it:
+```
+
+### Typed Input
+
+Press `Enter` and then type a task such as:
 
 - `open chrome`
 - `open vscode`
 - `open calculator`
 - `open chrome and search for weather`
 
+### Voice Input
+
+Type `voice`, then choose how long the app should listen:
+
+```text
+How many seconds should I listen? (default 6):
+```
+
+The current voice flow is:
+
+1. Record from the default microphone.
+2. Play the recording back through the default speaker.
+3. Save the recording to a temporary `.wav` file.
+4. Send the audio to Hugging Face ASR using the `hf-inference` provider.
+5. Return the transcript as the task text.
+
+Voice mode currently uses:
+
+- sample rate: `16000`
+- channels: `1` (mono)
+- sample format: `int16`
+- model: `openai/whisper-large-v3`
+
+## Environment Notes
+
+- `API_KEY` must be available before voice input or model calls will work.
+- Voice mode needs a working microphone.
+- Playback needs a working default speaker or headphone output.
+- The speech-to-text request depends on network access and Hugging Face provider availability.
+
 ## Action Plan Format
 
-The executor expects a JSON array of steps like this:
+The executor expects a JSON array like this:
 
 ```json
 [
@@ -133,7 +196,9 @@ Current tests cover:
 ## Known Limitations
 
 - It uses your active desktop directly and is not sandboxed.
-- Accuracy depends heavily on the model understanding the screenshot.
-- A bad plan can still click the wrong thing.
-- The project is still a prototype, not a hardened desktop agent.
+- Accuracy depends heavily on screenshot interpretation.
+- A bad plan can still click the wrong place.
+- The app depends on external AI services for planning, verification, and voice transcription.
+- Voice transcription depends on external inference availability.
 - End-to-end live automation is much less predictable than the unit tests.
+- This is still a prototype, not a hardened desktop agent.
