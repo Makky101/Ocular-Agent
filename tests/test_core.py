@@ -3,6 +3,7 @@ import unittest
 from unittest.mock import patch
 
 from automate import Automate
+from main import collect_automation_mode
 from reasoning import Reason
 
 
@@ -82,7 +83,38 @@ class CleanDataTests(unittest.TestCase):
         self.assertEqual(result[0]["action"][0]["keyword"], "click")
 
 
+class AutomationModeSelectionTests(unittest.TestCase):
+    @patch("builtins.print")
+    @patch("builtins.input", return_value="")
+    def test_collect_automation_mode_defaults_to_simple(self, mocked_input, mocked_print):
+        self.assertEqual(collect_automation_mode(), "simple")
+
+    @patch("builtins.print")
+    @patch("builtins.input", return_value="2")
+    def test_collect_automation_mode_accepts_advanced_shortcut(self, mocked_input, mocked_print):
+        self.assertEqual(collect_automation_mode(), "advanced")
+
+    @patch("builtins.print")
+    @patch("builtins.input", side_effect=["wrong", "advanced"])
+    def test_collect_automation_mode_retries_after_invalid_choice(self, mocked_input, mocked_print):
+        self.assertEqual(collect_automation_mode(), "advanced")
+
+
 class AutomateRetryTests(unittest.TestCase):
+    def test_run_simple_executes_plan_without_verification(self):
+        plan = [
+            {
+                "id": 1,
+                "step": "Simple attempt",
+                "action": [{"keyword": "wait", "duration": 0}],
+            }
+        ]
+
+        with patch.object(Automate, "_execute_action", autospec=True) as execute_action:
+            Automate().run(plan, mode="simple")
+
+        self.assertEqual(execute_action.call_count, 1)
+
     def test_automate_retries_after_failed_verification(self):
         initial_plan = [
             {
