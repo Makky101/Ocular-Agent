@@ -1,6 +1,6 @@
-# Human Emulator
+# Ocular Agent
 
-Human Emulator is a Python desktop automation prototype that turns a plain-English task into real mouse and keyboard actions on your computer.
+Ocular Agent is a desktop automation tool that captures screenshots and uses LLM reasoning to generate mouse and keyboard actions from natural language or voice commands.
 
 It currently supports two ways to provide a task:
 
