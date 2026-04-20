@@ -55,10 +55,10 @@ class Reason:
 
       ## SCREENSHOT ANALYSIS CHECKLIST:
       Before creating your plan, identify:
-      - ✓ All visible UI elements (buttons, fields, icons, menus, links)
-      - ✓ Exact pixel coordinates for interactive elements
-      - ✓ Current state of the interface (what's already open, selected, focused)
-      - ✓ Any elements that may need time to load after actions
+      - All visible UI elements (buttons, fields, icons, menus, links)
+      - Exact pixel coordinates for interactive elements
+      - Current state of the interface (what's already open, selected, focused)
+      - Any elements that may need time to load after actions
 
       **CRITICAL:** Base your plan ENTIRELY on what you can see in the screenshot. Do not assume elements exist if they're not visible.
 
@@ -78,7 +78,7 @@ class Reason:
       | `hotkey` | Press key combination | `keys` (list of keys e.g. ["ctrl", "l"]) |
       | `wait` | Pause execution | `duration` (seconds) |
 
-      ## KEYBOARD SHORTCUTS REFERENCE (always prefer these over mouse clicks on system UI):
+      ## KEYBOARD SHORTCUTS REFERENCE (**always prefer these over mouse clicks on system UI**):
 
       | Task | Action to use |
       |------|--------------|
