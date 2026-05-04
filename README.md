@@ -55,6 +55,7 @@ This project controls your real desktop session.
 
 - Python 3.10+
 - `pyautogui`
+- `huggingface_hub`
 - `groq`
 - `mss`
 - `numpy`
@@ -85,7 +86,8 @@ pip install -r requirements.txt
 Create a `.env` file in the project root:
 
 ```env
-API_KEY=GROQ_API_KEY
+GROQ_API_KEY=GROQ_API_KEY
+HUGGINGFACE_API_KEY=HUGGINGFACE_API_KEY
 ```
 
 ## Run
