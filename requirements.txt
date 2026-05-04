@@ -1,6 +1,7 @@
 pyautogui
 groq
 numpy
+huggingface_hub
 mss
 Pillow
 python-dotenv
