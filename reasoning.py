@@ -1,7 +1,7 @@
 from screenCapture import screenTake
 from dotenv import load_dotenv
 import pyautogui as auto
-from huggingface_hub import InferenceClient
+from groq import Groq
 from memory import cache
 import base64
 import os
@@ -300,25 +300,24 @@ class Reason:
     """Request an action plan (or verification) from the configured LLM."""
     try:
       # Initialize Hugging Face inference client using API key from env.
-      client = InferenceClient(token=os.environ.get("API_KEY"))
+      client =Groq(api_key=os.environ.get("GROQ_API_KEY"))
 
       #turn bytes img to base64 encoded string
       img_b64 = base64.b64encode(screenTake.screenCapture()).decode('utf-8')
 
       # Send multimodal request: prompt text + current screenshot.
-      response = client.chat_completion(
-        model= 'moonshotai/Kimi-K2.5:novita',
+      response = client.chat.completions.create(
         messages=[{
           'role':'user',
           'content':[
             {'type':'text', 'text': prompt},
 
-            {'type': 'image', 
+            {'type': 'image_url', 
               'image': {'url': f'data:image/png;base64,{img_b64}'}
             }
           ]
         }],
-        max_tokens=2000
+        model="meta-llama/llama-4-scout-17b-16e-instruct",
       )
       
       if not response or not response.choices:
