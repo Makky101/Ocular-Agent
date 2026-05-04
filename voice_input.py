@@ -81,7 +81,7 @@ def capture_voice_task(
     """Convert microphone audio into text using Hugging Face automatic speech recognition."""
 
     # Read the API key from the environment so it is not hardcoded in the file.
-    api_key = os.environ.get("API_KEY")
+    api_key = os.environ.get("HUGGINGFACE_API_KEY")
 
     # Refuse to continue if there is no API key available.
     if not api_key:
