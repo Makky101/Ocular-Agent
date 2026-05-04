@@ -55,7 +55,7 @@ This project controls your real desktop session.
 
 - Python 3.10+
 - `pyautogui`
-- `huggingface_hub`
+- `groq`
 - `mss`
 - `numpy`
 - `Pillow`
@@ -75,7 +75,7 @@ This project controls your real desktop session.
 ## Setup
 
 ```bash
-git clone https://github.com/Makky101/Human-Emulator.git
+git clone https://github.com/Makky101/Ocular-Agent.git
 cd Human-Emulator
 python -m venv .venv
 .venv\Scripts\activate
@@ -85,7 +85,7 @@ pip install -r requirements.txt
 Create a `.env` file in the project root:
 
 ```env
-API_KEY=your_huggingface_token_here
+API_KEY=GROQ_API_KEY
 ```
 
 ## Run
